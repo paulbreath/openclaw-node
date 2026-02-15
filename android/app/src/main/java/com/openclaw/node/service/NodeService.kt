@@ -34,7 +34,7 @@ class NodeService : Service() {
         super.onCreate()
         running = true
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification("正在运行"))
+        startForeground(NOTIFICATION_ID, createNotification(getString(R.string.notification_running)))
         startAccessibilityMonitor()
     }
     
@@ -61,10 +61,10 @@ class NodeService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "OpenClaw Node 服务",
+                getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "显示 OpenClaw Node 运行状态"
+                description = getString(R.string.notification_channel_desc)
                 setShowBadge(false)
             }
             
@@ -84,7 +84,7 @@ class NodeService : Service() {
         )
         
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("OpenClaw Node")
+            .setContentTitle(getString(R.string.notification_title))
             .setContentText(status)
             .setSmallIcon(android.R.drawable.ic_menu_manage)
             .setContentIntent(pendingIntent)
@@ -105,7 +105,10 @@ class NodeService : Service() {
     
     private fun checkAccessibilityAndNotify() {
         val enabled = isAccessibilityEnabled()
-        val status = if (enabled) "运行中 - 无障碍已启用" else "运行中 - 请开启无障碍"
+        val status = if (enabled) 
+            getString(R.string.notification_accessibility_enabled) 
+        else 
+            getString(R.string.notification_accessibility_disabled)
         
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, createNotification(status))

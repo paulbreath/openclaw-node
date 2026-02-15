@@ -11,16 +11,26 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.openclaw.node.service.NodeService
@@ -32,7 +42,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 启动前台服务
         val serviceIntent = Intent(this, NodeService::class.java).apply {
             action = NodeService.ACTION_START
         }
@@ -43,34 +52,54 @@ class MainActivity : ComponentActivity() {
         }
         
         setContent {
-            MaterialTheme {
-                NodeScreen()
+            OpenClawTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    NodeScreen()
+                }
             }
         }
     }
-    
-    override fun onResume() {
-        super.onResume()
-        // 每次回到应用时刷新UI
-    }
 }
 
+@Composable
+fun OpenClawTheme(content: @Composable () -> Unit) {
+    val colorScheme = lightColorScheme(
+        primary = Color(0xFF2563EB),
+        onPrimary = Color.White,
+        primaryContainer = Color(0xFFDBEAFE),
+        secondary = Color(0xFF7C3AED),
+        tertiary = Color(0xFF059669),
+        background = Color(0xFFF8FAFC),
+        surface = Color.White,
+        error = Color(0xFFDC2626),
+        onError = Color.White
+    )
+    
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = MaterialTheme.typography,
+        content = content
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NodeScreen() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("openclaw_node", Context.MODE_PRIVATE) }
     
-    // 状态
     var gatewayAddress by remember { 
         mutableStateOf(prefs.getString("last_gateway", "") ?: "") 
     }
     var isConnected by remember { mutableStateOf(false) }
     var isConnecting by remember { mutableStateOf(false) }
     var connectionError by remember { mutableStateOf<String?>(null) }
-    
-    // 检查无障碍服务是否启用
     var accessibilityEnabled by remember { mutableStateOf(false) }
+    var showDeviceInfo by remember { mutableStateOf(false) }
     
     fun checkAccessibilityEnabled(): Boolean {
         return try {
@@ -86,18 +115,15 @@ fun NodeScreen() {
         }
     }
     
-    // 初始检查
     LaunchedEffect(Unit) {
         accessibilityEnabled = checkAccessibilityEnabled()
     }
     
-    // 每次恢复时重新检查
     DisposableEffect(Unit) {
         accessibilityEnabled = checkAccessibilityEnabled()
         onDispose { }
     }
     
-    // 监听连接状态
     val stateManager = remember { NodeStateManager.getInstance(context) }
     LaunchedEffect(stateManager) {
         stateManager.connectionState.collect { state ->
@@ -111,7 +137,6 @@ fun NodeScreen() {
         }
     }
     
-    // 设备信息
     val deviceManufacturer = Build.MANUFACTURER.lowercase()
     val deviceBrand = Build.BRAND.lowercase()
     
@@ -119,254 +144,486 @@ fun NodeScreen() {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Logo 和标题
-        Text(
-            text = "🤖 OpenClaw Node",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 24.dp, bottom = 4.dp)
-        )
-        
-        Text(
-            text = "连接到 Gateway 开始控制",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        // === 无障碍服务状态卡片 ===
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (accessibilityEnabled) Color(0xFFE8F5E9) 
-                                 else Color(0xFFFFEBEE)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (accessibilityEnabled) "✅" else "⚠️",
-                        fontSize = 28.sp
+        // === Header ===
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                )
+                .padding(horizontal = 24.dp, vertical = 32.dp)
+        ) {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Devices,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = if (accessibilityEnabled) "无障碍服务已启用" 
-                                   else "请开启无障碍服务",
-                            style = MaterialTheme.typography.titleMedium
+                            text = "OpenClaw Node",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                         Text(
-                            text = if (accessibilityEnabled) "可以开始连接" 
-                                   else "点击下方按钮开启",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            text = "AI Automation Bridge",
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.8f)
                         )
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Status indicator
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isConnected -> Color(0xFF22C55E)
+                                        isConnecting -> Color(0xFFF59E0B)
+                                        else -> Color(0xFFEF4444)
+                                    }
+                                )
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = when {
+                                isConnected -> "Connected to Gateway"
+                                isConnecting -> "Connecting..."
+                                accessibilityEnabled -> "Ready to connect"
+                                else -> "Setup required"
+                            },
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+        
+        // === Content ===
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // === Accessibility Card ===
+            StatusCard(
+                icon = if (accessibilityEnabled) Icons.Default.CheckCircle else Icons.Default.Accessibility,
+                iconTint = if (accessibilityEnabled) Color(0xFF22C55E) else Color(0xFFF59E0B),
+                title = if (accessibilityEnabled) "Accessibility Enabled" else "Enable Accessibility",
+                subtitle = if (accessibilityEnabled) 
+                    "Service is ready" 
+                else 
+                    "Required for automation",
+                isComplete = accessibilityEnabled
+            ) {
                 if (!accessibilityEnabled) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
-                    // 主按钮 - 打开无障碍设置
                     Button(
                         onClick = {
                             try {
-                                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                                context.startActivity(intent)
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             } catch (e: Exception) {
-                                Toast.makeText(context, "无法打开设置", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Cannot open settings", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1565C0)
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text("打开无障碍设置")
+                        Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Open Accessibility Settings")
                     }
                     
-                    // 厂商特殊说明
-                    val note = when {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Vendor hint
+                    val vendorHint = when {
                         deviceManufacturer.contains("xiaomi") || deviceBrand.contains("xiaomi") -> 
-                            "小米手机：设置 → 无障碍 → 已安装的服务 → OpenClaw Node"
+                            "Settings → Accessibility → Installed services → OpenClaw Node"
                         deviceManufacturer.contains("huawei") || deviceBrand.contains("huawei") -> 
-                            "华为手机：设置 → 辅助功能 → 无障碍 → OpenClaw Node"
-                        deviceManufacturer.contains("oppo") || deviceBrand.contains("oppo") -> 
-                            "OPPO手机：设置 → 其他设置 → 无障碍 → OpenClaw Node"
-                        deviceManufacturer.contains("vivo") || deviceBrand.contains("vivo") -> 
-                            "vivo手机：设置 → 快捷与辅助 → 无障碍 → OpenClaw Node"
+                            "Settings → Accessibility → Accessibility → OpenClaw Node"
                         deviceManufacturer.contains("samsung") -> 
-                            "三星手机：设置 → 辅助功能 → 已安装的服务 → OpenClaw Node"
-                        else -> "在无障碍设置中找到 OpenClaw Node 并开启"
+                            "Settings → Accessibility → Installed services → OpenClaw Node"
+                        else -> 
+                            "Find OpenClaw Node in Accessibility settings"
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "💡 $note",
+                        text = "💡 $vendorHint",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF666666)
+                        color = Color(0xFF64748B)
                     )
                     
-                    // 刷新按钮
                     Spacer(modifier = Modifier.height(8.dp))
+                    
                     TextButton(
                         onClick = { accessibilityEnabled = checkAccessibilityEnabled() }
                     ) {
-                        Text("🔄 刷新状态")
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Refresh Status")
                     }
-                } else {
-                    // 显示已启用的服务信息
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "✓ 服务已就绪，可以连接 Gateway",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF2E7D32)
-                    )
                 }
             }
-        }
-        
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        // === 连接区域 ===
-        OutlinedTextField(
-            value = gatewayAddress,
-            onValueChange = { gatewayAddress = it },
-            label = { Text("Gateway 地址") },
-            placeholder = { Text("192.168.1.100:18789 或 localhost:18789") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = accessibilityEnabled && !isConnecting
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        // 连接按钮
-        Button(
-            onClick = {
-                if (gatewayAddress.isNotBlank()) {
-                    prefs.edit().putString("last_gateway", gatewayAddress).apply()
-                    isConnecting = true
-                    connectionError = null
-                    scope.launch {
-                        stateManager.connect(gatewayAddress)
-                    }
-                } else {
-                    Toast.makeText(context, "请输入Gateway地址", Toast.LENGTH_SHORT).show()
-                }
-            },
-            enabled = accessibilityEnabled && !isConnecting && gatewayAddress.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isConnected) Color(0xFF4CAF50) 
-                                 else MaterialTheme.colorScheme.primary
-            )
-        ) {
-            if (isConnecting) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("连接中...")
-            } else {
-                Text(if (isConnected) "✓ 已连接" else "🔗 连接 Gateway")
-            }
-        }
-        
-        // 断开按钮
-        if (isConnected) {
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = { stateManager.disconnect() },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("断开连接")
-            }
-        }
-        
-        // 错误提示
-        connectionError?.let { error ->
-            Spacer(modifier = Modifier.height(8.dp))
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // === Connection Card ===
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Text(
+                        text = "Gateway Connection",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = gatewayAddress,
+                        onValueChange = { gatewayAddress = it },
+                        label = { Text("Gateway Address") },
+                        placeholder = { Text("localhost:18789") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Uri,
+                            imeAction = ImeAction.Go
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onGo = {
+                                if (gatewayAddress.isNotBlank() && accessibilityEnabled && !isConnecting) {
+                                    prefs.edit().putString("last_gateway", gatewayAddress).apply()
+                                    scope.launch { stateManager.connect(gatewayAddress) }
+                                }
+                            }
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = accessibilityEnabled && !isConnecting,
+                        leadingIcon = {
+                            Icon(Icons.Default.Router, contentDescription = null)
+                        },
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Button(
+                        onClick = {
+                            if (gatewayAddress.isNotBlank()) {
+                                prefs.edit().putString("last_gateway", gatewayAddress).apply()
+                                scope.launch { stateManager.connect(gatewayAddress) }
+                            } else {
+                                Toast.makeText(context, "Enter gateway address", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        enabled = accessibilityEnabled && !isConnecting && gatewayAddress.isNotBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isConnected) Color(0xFF22C55E) 
+                                             else MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        if (isConnecting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Connecting...")
+                        } else {
+                            Icon(
+                                if (isConnected) Icons.Default.Check else Icons.Default.Link,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isConnected) "Connected" else "Connect")
+                        }
+                    }
+                    
+                    if (isConnected) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { stateManager.disconnect() },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFEF4444)
+                            )
+                        ) {
+                            Icon(Icons.Default.LinkOff, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Disconnect")
+                        }
+                    }
+                    
+                    // Error message
+                    connectionError?.let { error ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFFEF2F2)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = error,
+                                    color = Color(0xFFDC2626),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // === Device Info (Collapsible) ===
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Device Information",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        IconButton(onClick = { showDeviceInfo = !showDeviceInfo }) {
+                            Icon(
+                                if (showDeviceInfo) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                    
+                    if (showDeviceInfo) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        InfoRow("Brand", Build.BRAND)
+                        InfoRow("Model", Build.MODEL)
+                        InfoRow("Android", "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                        InfoRow(
+                            "Service", 
+                            if (NodeService.isRunning()) "Running" else "Stopped",
+                            valueColor = if (NodeService.isRunning()) Color(0xFF22C55E) else Color(0xFFEF4444)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // === Features List ===
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Supported Actions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val features = listOf(
+                        "Tap & Swipe gestures" to Icons.Filled.TouchApp,
+                        "Text input" to Icons.Filled.Edit,
+                        "Screen dump" to Icons.Filled.ViewAgenda,
+                        "Screenshot (Android 11+)" to Icons.Filled.Image,
+                        "Navigation (Back/Home/Recent)" to Icons.Filled.Menu
+                    )
+                    
+                    features.forEach { feature ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                feature.second,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = feature.first,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // === Footer ===
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "⚠️ $error",
-                    color = Color(0xFFE65100),
-                    modifier = Modifier.padding(12.dp)
+                    text = "OpenClaw Node v1.0.0",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8)
+                )
+                Text(
+                    text = "Auto-starts on device boot",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8)
                 )
             }
-        }
-        
-        // === 设备信息 ===
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text("设备信息", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                RowInfo("品牌", Build.BRAND)
-                RowInfo("型号", Build.MODEL)
-                RowInfo("Android", Build.VERSION.RELEASE)
-                RowInfo("SDK", Build.VERSION.SDK_INT.toString())
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // 服务状态
-                RowInfo("后台服务", if (NodeService.isRunning()) "✅ 运行中" else "❌ 未运行")
-            }
-        }
-        
-        Spacer(modifier = Modifier.weight(1f, fill = false))
-        
-        // === 底部信息 ===
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(top = 20.dp, bottom = 16.dp)
-        ) {
-            Text(
-                text = "OpenClaw Node v1.0.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-            Text(
-                text = "重启手机后会自动启动服务",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
+            
+            Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
 
 @Composable
-fun RowInfo(label: String, value: String) {
+fun StatusCard(
+    icon: ImageVector,
+    iconTint: Color,
+    title: String,
+    subtitle: String,
+    isComplete: Boolean,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isComplete) Color(0xFFF0FDF4) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(iconTint.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B)
+                    )
+                }
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+fun InfoRow(label: String, value: String, valueColor: Color = Color.Unspecified) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, color = Color.Gray, style = MaterialTheme.typography.bodySmall)
-        Text(text = value, style = MaterialTheme.typography.bodySmall)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF64748B)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = valueColor
+        )
     }
 }

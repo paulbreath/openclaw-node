@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">OpenClaw Node</string>
+    
+    <!-- Accessibility Service -->
+    <string name="accessibility_service_label">OpenClaw Node</string>
+    <string name="accessibility_service_description">
+OpenClaw Node 自动化服务
+
+此服务允许 OpenClaw AI 助手控制您的设备执行自动化操作：
+• 点击、滑动等手势操作
+• 获取屏幕界面信息
+• 输入文字
+• 截图
+
+使用此服务前，请确保：
+1. 已在 OpenClaw Node 应用中连接到 Gateway
+2. 了解 AI 将要执行的操作
+
+此服务不会收集或上传您的任何数据。
+    </string>
+    
+    <!-- Notifications -->
+    <string name="notification_channel_name">OpenClaw Node 服务</string>
+    <string name="notification_channel_desc">显示 OpenClaw Node 运行状态</string>
+    <string name="notification_title">OpenClaw Node</string>
+    <string name="notification_running">正在运行</string>
+    <string name="notification_accessibility_enabled">无障碍已启用</string>
+    <string name="notification_accessibility_disabled">请开启无障碍</string>
+</resources>

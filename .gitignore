@@ -49,3 +49,17 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Android
+*.apk
+*.aab
+*.keystore
+*.jks
+android/.gradle/
+android/app/build/
+android/build/
+local.properties
+
+# Google Play 服务账号凭证
+scripts/google-play-service-account.json
+scripts/node_modules/

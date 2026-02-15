@@ -1,0 +1,13 @@
+{
+  "name": "openclaw-node-publisher",
+  "version": "1.0.0",
+  "description": "Google Play Publisher for OpenClaw Node",
+  "type": "module",
+  "scripts": {
+    "upload": "bun run upload.ts",
+    "publish": "bash publish.sh"
+  },
+  "dependencies": {
+    "googleapis": "^133.0.0"
+  }
+}
